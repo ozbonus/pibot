@@ -4,9 +4,11 @@ import pygame.display
 import time
 import os
 
+
 # ########## # 
 # GPIO Setup #
 # ########## #
+
 
 # Set pin numbering scheme.
 GPIO.setmode(GPIO.BOARD)
@@ -23,22 +25,26 @@ left_forward_pwm = GPIO.PWM(11, 100)
 right_forward_pwm = GPIO.PWM(13, 100)
 right_backward_pwm = GPIO.PWM(15, 100)
 
+
 # ############ #
 # pygame Setup #
 # ############ #
+
 
 pygame.init()
 os.environ['SDL_VIDEODRIVER'] = 'dummy'
 pygame.display.init()
 screen = pygame.display.set_mode((100, 100))
 
-# ################ #
-# Controller Logic #
-# ################ #
+
+# ################## #
+# Motoring Functions #
+# ################## #
+
 
 def forward(duty=100, seconds=None):
     left_forward_pwm.start(duty)
-    right_forward_pwm.start(duty)
+    right_forward_pwm.start(97) # Compensate for a weak left wheel.
     if seconds:
         time.sleep(seconds)
         stop()
@@ -46,7 +52,7 @@ def forward(duty=100, seconds=None):
 
 def backward(duty=100, seconds=None):
     left_backward_pwm.start(duty)
-    right_backward_pwm.start(duty)
+    right_backward_pwm.start(97) # Compensate for a weak left wheel.
     if seconds:
         time.sleep(seconds)
         stop()
@@ -92,6 +98,36 @@ def dance():
     right(duty=100, seconds=0.5)
     left(duty=100, seconds=1.5)
 
+
+# ############### #
+# Joystick Search #
+# ############### #
+
+
+searching = True
+joystick_found = False
+
+while searching:
+    pygame.joystick.quit()
+    pygame.joystick.init()
+    if pygame.joystick.get_count() > 0:
+        searching = False
+        joystick_found = True
+    for event in pygame.event.get():
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_x:
+                searching = False
+
+if joystick_found:
+    joy = pygame.joystick.Joystick(0)
+    joy.init()
+
+
+# ######### #
+# Main Loop #
+# ######### #
+
+
 running = True
 
 while running:
@@ -115,6 +151,12 @@ while running:
                 right()
             if event.key == pygame.K_SPACE:
                 dance()
+        if event.type == pygame.JOYHATMOTION:
+            if joy.get_hat(0) == ( 0,  1): forward()
+            if joy.get_hat(0) == ( 0, -1): backward()
+            if joy.get_hat(0) == (-1,  0): left()
+            if joy.get_hat(0) == ( 1,  0): right()
+            if joy.get_hat(0) == ( 0,  0): stop()
 
 # ######## #
 # Clean Up #
